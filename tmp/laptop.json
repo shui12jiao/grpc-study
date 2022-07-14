@@ -1,0 +1,62 @@
+{
+ "id": "f67c50fe-1fa0-4a0a-88b9-6397fd1587a2",
+ "brand": "Dell",
+ "name": "Vostro",
+ "cpu": {
+  "brand": "AMD",
+  "name": "Ryzen 7 3700X",
+  "numberCores": 8,
+  "numberThreads": 12,
+  "minGhz": 2.5919445195158524,
+  "maxGhz": 3.3548642957134125
+ },
+ "ram": {
+  "value": "11",
+  "unit": "GIGABYTE"
+ },
+ "gpus": [
+  {
+   "brand": "NVIDIA",
+   "name": "GTX 1660Ti",
+   "minGhz": 1.1247293640478526,
+   "maxGhz": 1.8073718778696488,
+   "memory": {
+    "value": "8",
+    "unit": "GIGABYTE"
+   }
+  }
+ ],
+ "storages": [
+  {
+   "driver": "HDD",
+   "memory": {
+    "value": "3",
+    "unit": "TERABYTE"
+   }
+  },
+  {
+   "driver": "SDD",
+   "memory": {
+    "value": "875",
+    "unit": "GIGABYTE"
+   }
+  }
+ ],
+ "screen": {
+  "sizeInch": 23.876995,
+  "resolution": {
+   "width": 3152,
+   "height": 1773
+  },
+  "panel": "OLED",
+  "multtouch": false
+ },
+ "keyboard": {
+  "layout": "QWERTY",
+  "backlit": true
+ },
+ "weightKg": 1.143806862773649,
+ "priceUsd": 2299.4168905085917,
+ "releaseYear": 2017,
+ "updatedAt": "2022-07-02T04:13:35.927464400Z"
+}
