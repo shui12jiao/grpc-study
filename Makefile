@@ -2,13 +2,17 @@ gen:
 	protoc --proto_path=proto proto/*.proto \
 	--go_out=./pb --go_opt=paths=source_relative \
 	--go-grpc_out=./pb --go-grpc_opt=require_unimplemented_servers=false,paths=source_relative \
-	--grpc-gateway_out=./pb --grpc-gateway_opt paths=source_relative
+	--grpc-gateway_out=./pb --grpc-gateway_opt paths=source_relative \
+	--openapiv2_out ./swagger
 
 clean:
 	rm pb/pcbook/*.go
 
 server:
 	go run cmd/server/main.go -port 8080
+
+server-rest:
+	go run cmd/server/main.go -port 8081 -type rest -endpoint 0.0.0.0:8080
 
 server1:
 	go run cmd/server/main.go -port 50051

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
@@ -8,25 +9,32 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"pcbook/pb"
 	"pcbook/service"
 	"time"
 
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 )
 
 const (
-	secretKey     = "secret"
-	tokenDuration = time.Minute * 10
+	secretKey        = "secret"
+	tokenDuration    = time.Minute * 10
+	serverCertFile   = "cert/server-cert.pem"
+	serverCertKey    = "cert/server-key.pem"
+	clientCACertFile = "cert/ca-cert.pem"
 )
 
 func main() {
 	port := flag.Int("port", 0, "the server port")
 	enableTLS := flag.Bool("tls", false, "enable SSL/TLS")
+	serverType := flag.String("type", "grpc", "server type, grpc or rest")
+	endPoint := flag.String("endpoint", "", "grpc endpoint")
 	flag.Parse()
-	log.Printf("start server on port: %d, TLS=%t", *port, *enableTLS)
 
 	jwtManager := service.NewJWTManager(secretKey, tokenDuration)
 	userStore := service.NewInMemoryUserStore()
@@ -37,17 +45,36 @@ func main() {
 	}
 
 	laptopServer := service.NewLaptopServer(service.NewInMemoryLaptopStore(), service.NewDiskImageStore("img"), service.NewInMemoryRatingStore())
-	interceptor := service.NewAuthInterceptor(jwtManager, accessibleRoles())
 
+	address := fmt.Sprintf("0.0.0.0:%d", *port)
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		log.Fatal("failed to listen: ", err)
+	}
+
+	if *serverType == "grpc" {
+		err = runGRPCServer(authServer, laptopServer, jwtManager, *enableTLS, listener)
+	} else if *serverType == "rest" {
+		err = runRESTServer(authServer, laptopServer, jwtManager, *enableTLS, listener, *endPoint)
+	} else {
+		log.Fatal("unknown server type: ", *serverType)
+	}
+	if err != nil {
+		log.Fatal("failed to start server: ", err)
+	}
+}
+
+func runGRPCServer(authServer pb.AuthServiceServer, laptopServer pb.LaptopServiceServer, jwtManager *service.JWTMaganer, enableTLS bool, listener net.Listener) error {
+	interceptor := service.NewAuthInterceptor(jwtManager, accessibleRoles())
 	serverOption := []grpc.ServerOption{
 		grpc.UnaryInterceptor(interceptor.Unary()),
 		grpc.StreamInterceptor(interceptor.Stream()),
 	}
 
-	if *enableTLS {
+	if enableTLS {
 		tlsCredentials, err := loadTLSCredentials()
 		if err != nil {
-			log.Fatal("failed to load tls credentials: ", err)
+			return fmt.Errorf("failed to load tls credentials: %w", err)
 		}
 		serverOption = append(serverOption, grpc.Creds(tlsCredentials))
 	}
@@ -58,27 +85,50 @@ func main() {
 	pb.RegisterLaptopServiceServer(grpcServer, laptopServer)
 	reflection.Register(grpcServer)
 
-	address := fmt.Sprintf("localhost:%d", *port)
-	listener, err := net.Listen("tcp", address)
+	log.Printf("start GRPC server at: %s, TLS=%t", listener.Addr().String(), enableTLS)
+	return grpcServer.Serve(listener)
+}
+
+func runRESTServer(authServer pb.AuthServiceServer,
+	laptopServer pb.LaptopServiceServer,
+	jwtManager *service.JWTMaganer,
+	enableTLS bool,
+	listener net.Listener,
+	grpcEndpoint string) error {
+	mux := runtime.NewServeMux()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	dailOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+
+	err := pb.RegisterAuthServiceHandlerFromEndpoint(ctx, mux, grpcEndpoint, dailOptions)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		return err
+	}
+	err = pb.RegisterLaptopServiceHandlerFromEndpoint(ctx, mux, grpcEndpoint, dailOptions)
+	if err != nil {
+		return err
 	}
 
-	err = grpcServer.Serve(listener)
-	if err != nil {
-		log.Fatalf("failed to serve: %v", err)
+	log.Printf("start REST server at: %s, TLS=%t", listener.Addr().String(), enableTLS)
+	// Start HTTP server (and proxy calls to gRPC server endpoint)
+	if enableTLS {
+		return http.ServeTLS(listener, mux, serverCertFile, serverCertKey)
 	}
+	return http.Serve(listener, mux)
+
 }
 
 func loadTLSCredentials() (credentials.TransportCredentials, error) {
 	//Load server's certificate and private key
-	serverCert, err := tls.LoadX509KeyPair("cert/server-cert.pem", "cert/server-key.pem")
+	serverCert, err := tls.LoadX509KeyPair(serverCertFile, serverCertKey)
 	if err != nil {
 		return nil, err
 	}
 
 	//Load certificate of the CA who signed the client's certificate
-	pemClientCA, err := ioutil.ReadFile("cert/ca-cert.pem")
+	pemClientCA, err := ioutil.ReadFile(clientCACertFile)
 	if err != nil {
 		return nil, err
 	}

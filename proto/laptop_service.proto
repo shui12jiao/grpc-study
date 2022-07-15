@@ -53,8 +53,7 @@ service LaptopService {
   }
   rpc SearchLaptop(SearchLaptopRequest) returns (stream SearchLaptopResponse) {
     option (google.api.http) = {
-      post : "/v1/laptop/search"
-      body : "*"
+      get : "/v1/laptop/search"
     };
   }
   rpc UploadImage(stream UploadImageRequest) returns (UploadImageResponse) {

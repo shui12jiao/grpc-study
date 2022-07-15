@@ -57,7 +57,10 @@ func main() {
 		log.Fatalf("failed to dial: %v", err)
 	}
 	laptopClient := client.NewLaptopClient(conn2)
-	testRateLaptop(laptopClient, 5)
+	// testRateLaptop(laptopClient, 5)
+	for i := 0; i < 10; i++ {
+		testCreateLaptop(laptopClient)
+	}
 }
 
 func loadTLSCredentials() (credentials.TransportCredentials, error) {
