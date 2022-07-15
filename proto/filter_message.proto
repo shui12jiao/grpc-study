@@ -1,8 +1,7 @@
 syntax = "proto3";
 
-package pcbook;
-
-option go_package = "../pb";
+package my.pcbook;
+option go_package = ".;pb";
 
 import "memory_message.proto";
 

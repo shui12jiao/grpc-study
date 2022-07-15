@@ -1,8 +1,10 @@
 syntax = "proto3";
 
-package pcbook;
+package my.pcbook;
 
-option go_package = "../pb";
+import "google/api/annotations.proto";
+
+option go_package = ".;pb";
 
 message LoginRequest {
   string username = 1;
@@ -11,4 +13,11 @@ message LoginRequest {
 
 message LoginResponse { string access_token = 1; }
 
-service AuthService { rpc Login(LoginRequest) returns (LoginResponse); }
+service AuthService {
+  rpc Login(LoginRequest) returns (LoginResponse) {
+    option (google.api.http) = {
+      post : "/v1/auth/login",
+      body : "*"
+    };
+  }
+}

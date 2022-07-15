@@ -1,8 +1,9 @@
 syntax = "proto3";
 
-package pcbook;
+package my.pcbook;
+option go_package = ".;pb";
 
-option go_package = "../pb";
+import "google/api/annotations.proto";
 
 import "laptop_message.proto";
 import "filter_message.proto";
@@ -44,9 +45,28 @@ message RateLaptopResponse {
 }
 
 service LaptopService {
-  rpc CreateLaptop(CreateLaptopRequest) returns (CreateLaptopResponse) {}
-  rpc SearchLaptop(SearchLaptopRequest) returns (stream SearchLaptopResponse) {}
-  rpc UploadImage(stream UploadImageRequest) returns (UploadImageResponse) {}
+  rpc CreateLaptop(CreateLaptopRequest) returns (CreateLaptopResponse) {
+    option (google.api.http) = {
+      post : "/v1/laptop/create"
+      body : "*"
+    };
+  }
+  rpc SearchLaptop(SearchLaptopRequest) returns (stream SearchLaptopResponse) {
+    option (google.api.http) = {
+      post : "/v1/laptop/search"
+      body : "*"
+    };
+  }
+  rpc UploadImage(stream UploadImageRequest) returns (UploadImageResponse) {
+    option (google.api.http) = {
+      post : "/v1/laptop/upload_image"
+      body : "*"
+    };
+  }
   rpc RateLaptop(stream RateLaptopRequest) returns (stream RateLaptopResponse) {
+    option (google.api.http) = {
+      post : "/v1/laptop/rate"
+      body : "*"
+    };
   }
 }
